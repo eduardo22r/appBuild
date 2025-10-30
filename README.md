@@ -14,6 +14,10 @@ A cross-platform mobile application for learning new languages through interacti
 - **Live Chat**: Chat with your learning partner during collaborative sessions
 - **Collaborative Flashcards**: Study flashcards together and progress at the same pace
 - **Native Navigation**: Built-in back button support for easy navigation
+- **Online Connectivity**: Real-time network status detection and handling
+- **Cloud Sync**: Automatic progress synchronization across devices
+- **Offline Mode**: Full functionality with automatic sync when reconnected
+- **Smart Sync**: Queue changes offline and sync when connection is restored
 - **Cross-Platform**: Works on iOS, Android, and Web
 
 ## Tech Stack
@@ -24,6 +28,9 @@ A cross-platform mobile application for learning new languages through interacti
 - **AsyncStorage** for local data persistence
 - **Context API** for state management
 - **Socket.io Client** for real-time peer-to-peer communication (architecture ready)
+- **NetInfo** for network connectivity detection
+- **Axios** for HTTP requests and API communication
+- **Cloud Sync** with automatic retry and queue management
 
 ## Project Structure
 
@@ -48,7 +55,13 @@ language-learning-app/
 │   │   ├── PeerSessionScreen.tsx        # Collaborative learning session
 │   │   └── ProfileScreen.tsx            # User profile and settings
 │   ├── services/
-│   │   └── PeerService.ts           # Peer-to-peer connection service
+│   │   ├── PeerService.ts           # Peer-to-peer connection service
+│   │   ├── NetworkService.ts        # Network connectivity detection
+│   │   └── CloudSyncService.ts      # Cloud synchronization service
+│   ├── config/
+│   │   └── api.ts                   # API configuration and endpoints
+│   ├── components/
+│   │   └── ConnectionStatusBar.tsx  # Online/offline status indicator
 │   ├── types/
 │   │   └── index.ts                 # TypeScript type definitions
 │   └── utils/
@@ -131,6 +144,39 @@ When you first open the app, you'll be prompted to select a language you want to
 7. Complete the lesson and end the session when done
 
 **Note**: The current implementation uses a simulated peer service for demonstration. In production, this can be easily upgraded to use a real Socket.io server for true peer-to-peer connections.
+
+### Online Connectivity & Cloud Sync
+
+The app automatically detects your internet connection and manages data synchronization:
+
+**Features:**
+- Real-time network status detection
+- Automatic progress sync when online
+- Offline queue for changes made without connection
+- Visual indicators showing online/offline status
+- Manual sync option available on home screen
+
+**How it Works:**
+1. **Online**: Progress automatically syncs to cloud
+2. **Offline**: Changes are saved locally and queued
+3. **Reconnect**: Queued changes sync automatically
+4. **Status**: Visual indicators show connection and sync status
+
+**Sync Indicators:**
+- Green dot: Online and connected
+- Orange dot: Offline mode
+- Cloud icon (☁️): Ready to sync
+- Spinner (🔄): Currently syncing
+- Status bar: Shows connection changes
+
+**Manual Sync:**
+Tap the sync button on the home screen to force a sync when online.
+
+**Backend Configuration:**
+Edit `src/config/api.ts` to configure your backend endpoints:
+- `BASE_URL`: Your API server URL
+- `SOCKET_URL`: Your Socket.io server URL
+- Enable/disable features with feature flags
 
 ## Customization
 

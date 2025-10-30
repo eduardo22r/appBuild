@@ -12,8 +12,20 @@ import { useApp } from '../context/AppContext';
 import { LESSONS } from '../data/lessons';
 import { Colors, Spacing, BorderRadius, Typography, Shadows } from '../theme';
 
+const getTimeAgo = (date: Date): string => {
+  const seconds = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
+
+  if (seconds < 60) return 'just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+};
+
 const HomeScreen = ({ navigation }: any) => {
-  const { selectedLanguage, userProgress, userName } = useApp();
+  const { selectedLanguage, userProgress, userName, isOnline, isSyncing, lastSyncTime, syncNow } = useApp();
 
   const currentProgress = userProgress.find(
     (p) => p.languageId === selectedLanguage?.id
@@ -49,6 +61,7 @@ const HomeScreen = ({ navigation }: any) => {
             </View>
             <View style={styles.languageFlagContainer}>
               <Text style={styles.languageFlag}>{selectedLanguage?.flag}</Text>
+              <View style={[styles.onlineIndicator, !isOnline && styles.offlineIndicator]} />
             </View>
           </View>
 
@@ -61,6 +74,25 @@ const HomeScreen = ({ navigation }: any) => {
               </View>
             )}
           </View>
+
+          {/* Sync Status */}
+          <TouchableOpacity
+            style={styles.syncButton}
+            onPress={syncNow}
+            disabled={!isOnline || isSyncing}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.syncIcon}>{isSyncing ? '🔄' : isOnline ? '☁️' : '📡'}</Text>
+            <Text style={styles.syncText}>
+              {isSyncing
+                ? 'Syncing...'
+                : !isOnline
+                ? 'Offline'
+                : lastSyncTime
+                ? `Synced ${getTimeAgo(lastSyncTime)}`
+                : 'Tap to sync'}
+            </Text>
+          </TouchableOpacity>
         </LinearGradient>
 
         {/* Stats Grid */}
@@ -260,9 +292,24 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
+    position: 'relative',
   },
   languageFlag: {
     fontSize: 32,
+  },
+  onlineIndicator: {
+    position: 'absolute',
+    bottom: 4,
+    right: 4,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: Colors.success,
+    borderWidth: 2,
+    borderColor: Colors.text.inverse,
+  },
+  offlineIndicator: {
+    backgroundColor: Colors.warning,
   },
   languageCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
@@ -293,6 +340,25 @@ const styles = StyleSheet.create({
     color: Colors.text.inverse,
     fontSize: Typography.sizes.sm,
     fontWeight: Typography.weights.semibold,
+  },
+  syncButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.round,
+    alignSelf: 'flex-start',
+    marginTop: Spacing.sm,
+  },
+  syncIcon: {
+    fontSize: 14,
+    marginRight: Spacing.xs,
+  },
+  syncText: {
+    color: Colors.text.inverse,
+    fontSize: Typography.sizes.xs,
+    fontWeight: Typography.weights.medium,
   },
   statsGrid: {
     paddingHorizontal: Spacing.lg,
