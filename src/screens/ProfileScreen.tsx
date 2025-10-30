@@ -11,10 +11,19 @@ import {
 } from 'react-native';
 import { useApp } from '../context/AppContext';
 import { LANGUAGES } from '../data/languages';
+import { Colors, Spacing, BorderRadius, Typography, Shadows } from '../theme';
 
 const ProfileScreen = ({ navigation }: any) => {
-  const { selectedLanguage, setSelectedLanguage, userName, setUserName, userProgress } =
-    useApp();
+  const {
+    selectedLanguage,
+    setSelectedLanguage,
+    userName,
+    setUserName,
+    userProgress,
+    authUser,
+    handleLogout,
+    isAuthenticated,
+  } = useApp();
 
   const [isEditingName, setIsEditingName] = useState(false);
   const [tempName, setTempName] = useState(userName);
@@ -40,6 +49,35 @@ const ProfileScreen = ({ navigation }: any) => {
         },
       ]
     );
+  };
+
+  const handleSignOut = () => {
+    Alert.alert(
+      'Sign Out',
+      'Are you sure you want to sign out? Your progress is saved and will be restored when you sign back in.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Sign Out',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await handleLogout();
+              Alert.alert('Success', 'You have been signed out successfully');
+            } catch (error) {
+              Alert.alert('Error', 'Failed to sign out. Please try again.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const getAuthProviderName = (providerId?: string) => {
+    if (!providerId) return 'Email';
+    if (providerId.includes('google')) return 'Google';
+    if (providerId.includes('apple')) return 'Apple';
+    return 'Email';
   };
 
   const currentProgress = userProgress.find(
@@ -77,6 +115,27 @@ const ProfileScreen = ({ navigation }: any) => {
             </TouchableOpacity>
           )}
         </View>
+
+        {isAuthenticated && authUser && (
+          <View style={styles.accountCard}>
+            <Text style={styles.sectionTitle}>Account</Text>
+            <View style={styles.accountInfo}>
+              <View style={styles.accountRow}>
+                <Text style={styles.accountLabel}>Email</Text>
+                <Text style={styles.accountValue}>{authUser.email}</Text>
+              </View>
+              <View style={styles.accountRow}>
+                <Text style={styles.accountLabel}>Sign-in Method</Text>
+                <Text style={styles.accountValue}>
+                  {getAuthProviderName(authUser.provider)}
+                </Text>
+              </View>
+            </View>
+            <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
+              <Text style={styles.signOutButtonText}>Sign Out</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         <View style={styles.languageCard}>
           <Text style={styles.sectionTitle}>Current Language</Text>
@@ -293,6 +352,46 @@ const styles = StyleSheet.create({
     color: '#7F8C8D',
     lineHeight: 20,
     marginBottom: 8,
+  },
+  accountCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  accountInfo: {
+    marginBottom: 16,
+  },
+  accountRow: {
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F5F7FA',
+  },
+  accountLabel: {
+    fontSize: 14,
+    color: '#7F8C8D',
+    marginBottom: 4,
+  },
+  accountValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2C3E50',
+  },
+  signOutButton: {
+    backgroundColor: '#E74C3C',
+    borderRadius: 8,
+    padding: 14,
+    alignItems: 'center',
+  },
+  signOutButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

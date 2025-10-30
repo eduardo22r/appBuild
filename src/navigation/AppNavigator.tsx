@@ -7,6 +7,8 @@ import { Colors } from '../theme';
 
 // Screens
 import LanguageSelectionScreen from '../screens/LanguageSelectionScreen';
+import LoginScreen from '../screens/LoginScreen';
+import SignUpScreen from '../screens/SignUpScreen';
 import HomeScreen from '../screens/HomeScreen';
 import LessonsScreen from '../screens/LessonsScreen';
 import FlashcardScreen from '../screens/FlashcardScreen';
@@ -76,7 +78,7 @@ const MainTabs = () => {
 };
 
 const AppNavigator = () => {
-  const { selectedLanguage, isLoading } = useApp();
+  const { selectedLanguage, isLoading, isAuthenticated, handleLoginSuccess } = useApp();
 
   if (isLoading) {
     return null; // Or a loading screen
@@ -99,13 +101,30 @@ const AppNavigator = () => {
           headerBackTitleVisible: false,
         }}
       >
-        {!selectedLanguage ? (
+        {!isAuthenticated ? (
+          // Auth Stack
+          <>
+            <Stack.Screen
+              name="Login"
+              options={{ headerShown: false }}
+            >
+              {(props) => <LoginScreen {...props} onLoginSuccess={handleLoginSuccess} />}
+            </Stack.Screen>
+            <Stack.Screen
+              name="SignUp"
+              options={{ headerShown: false }}
+            >
+              {(props) => <SignUpScreen {...props} onSignUpSuccess={handleLoginSuccess} />}
+            </Stack.Screen>
+          </>
+        ) : !selectedLanguage ? (
           <Stack.Screen
             name="LanguageSelection"
             component={LanguageSelectionScreen}
             options={{ headerShown: false }}
           />
         ) : (
+          // Main App Stack
           <>
             <Stack.Screen
               name="MainTabs"

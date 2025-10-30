@@ -4,6 +4,7 @@ import { storage } from '../utils/storage';
 import { LANGUAGES } from '../data/languages';
 import NetworkService from '../services/NetworkService';
 import CloudSyncService from '../services/CloudSyncService';
+import AuthService, { AuthUser } from '../services/AuthService';
 
 interface AppContextType {
   selectedLanguage: Language | null;
@@ -17,6 +18,10 @@ interface AppContextType {
   isSyncing: boolean;
   lastSyncTime: Date | null;
   syncNow: () => Promise<void>;
+  isAuthenticated: boolean;
+  authUser: AuthUser | null;
+  handleLoginSuccess: () => void;
+  handleLogout: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -29,23 +34,42 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [isOnline, setIsOnline] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
 
   useEffect(() => {
     initializeApp();
 
+    // Add authentication listener
+    const removeAuthListener = AuthService.addAuthListener((user) => {
+      setAuthUser(user);
+      setIsAuthenticated(user !== null);
+
+      // Update user name when authenticated
+      if (user) {
+        setUserNameState(user.displayName || user.email || 'Learner');
+      }
+    });
+
     return () => {
       NetworkService.cleanup();
+      removeAuthListener();
     };
   }, []);
 
   const initializeApp = async () => {
     try {
+      // Check authentication status
+      const currentUser = AuthService.getCurrentUser();
+      setAuthUser(currentUser);
+      setIsAuthenticated(currentUser !== null);
+
       // Initialize network service
       NetworkService.initialize();
       NetworkService.addListener(handleNetworkChange);
 
-      // Initialize cloud sync
-      const userId = `user-${Date.now()}`; // In production, use real user ID
+      // Initialize cloud sync with user ID
+      const userId = currentUser?.uid || `guest-${Date.now()}`;
       CloudSyncService.initialize(userId);
       CloudSyncService.addSyncListener(handleSyncStatusChange);
 
@@ -65,7 +89,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setUserProgress(savedProgress);
       }
 
-      if (savedName) {
+      // Set user name from auth user or saved name
+      if (currentUser?.displayName) {
+        setUserNameState(currentUser.displayName);
+      } else if (savedName) {
         setUserNameState(savedName);
       }
 
@@ -173,6 +200,45 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     await CloudSyncService.syncProgress(userProgress);
   };
 
+  const handleLoginSuccess = () => {
+    // Refresh app state after login
+    const currentUser = AuthService.getCurrentUser();
+    if (currentUser) {
+      setAuthUser(currentUser);
+      setIsAuthenticated(true);
+      setUserNameState(currentUser.displayName || currentUser.email || 'Learner');
+
+      // Re-initialize cloud sync with authenticated user ID
+      CloudSyncService.initialize(currentUser.uid);
+
+      // Sync progress after login
+      if (userProgress.length > 0 && isOnline) {
+        CloudSyncService.syncProgress(userProgress);
+      }
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await AuthService.signOut();
+      setAuthUser(null);
+      setIsAuthenticated(false);
+
+      // Clear user-specific data
+      setSelectedLanguageState(null);
+      setUserProgress([]);
+      setUserNameState('Learner');
+
+      // Clear local storage
+      await storage.clearAll();
+
+      console.log('Logged out successfully');
+    } catch (error) {
+      console.error('Error during logout:', error);
+      throw error;
+    }
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -187,6 +253,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         isSyncing,
         lastSyncTime,
         syncNow,
+        isAuthenticated,
+        authUser,
+        handleLoginSuccess,
+        handleLogout,
       }}
     >
       {children}
