@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,9 +13,15 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as AppleAuthentication from 'expo-apple-authentication';
+import * as Google from 'expo-auth-session/providers/google';
+import * as WebBrowser from 'expo-web-browser';
 import { Colors, Spacing, BorderRadius, Typography, Shadows } from '../theme';
 import AuthService from '../services/AuthService';
-import { authConfig } from '../config/firebase';
+import { authConfig, googleSignInConfig } from '../config/firebase';
+import { getGoogleUserInfo } from '../services/GoogleAuthService';
+
+// Complete auth session for web
+WebBrowser.maybeCompleteAuthSession();
 
 interface LoginScreenProps {
   navigation: any;
@@ -28,6 +34,28 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation, onLoginSuccess })
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [appleLoading, setAppleLoading] = useState(false);
+
+  // Google Sign-In setup
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    expoClientId: googleSignInConfig.expoClientId,
+    iosClientId: googleSignInConfig.iosClientId,
+    androidClientId: googleSignInConfig.androidClientId,
+    webClientId: googleSignInConfig.webClientId,
+  });
+
+  // Handle Google Sign-In response
+  useEffect(() => {
+    if (response?.type === 'success') {
+      const { authentication } = response;
+      handleGoogleSignInSuccess(authentication);
+    } else if (response?.type === 'error') {
+      console.error('Google Sign-In error:', response.error);
+      Alert.alert('Google Sign-In Error', response.error?.message || 'Failed to sign in with Google');
+      setGoogleLoading(false);
+    } else if (response?.type === 'cancel') {
+      setGoogleLoading(false);
+    }
+  }, [response]);
 
   const handleEmailLogin = async () => {
     if (!email.trim() || !password.trim()) {
@@ -46,22 +74,43 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation, onLoginSuccess })
     }
   };
 
+  const handleGoogleSignInSuccess = async (authentication: any) => {
+    try {
+      console.log('✓ Google authentication successful');
+
+      // Get user info from Google
+      if (authentication?.accessToken) {
+        const userInfo = await getGoogleUserInfo(authentication.accessToken);
+        console.log('✓ Google user info retrieved:', userInfo.email);
+
+        // Use ID token if available, otherwise use access token
+        const token = authentication.idToken || authentication.accessToken;
+
+        // Sign in with AuthService
+        await AuthService.signInWithGoogle(token);
+        console.log('✓ User signed in with Google');
+
+        // Navigate to main app
+        onLoginSuccess();
+      } else {
+        throw new Error('No access token received from Google');
+      }
+    } catch (error) {
+      console.error('Google sign-in error:', error);
+      Alert.alert('Google Sign-In Failed', (error as Error).message);
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
     try {
-      // In a real app, you would:
-      // 1. Configure Google Sign-In
-      // 2. Get ID token from Google Sign-In
-      // 3. Pass it to AuthService.signInWithGoogle(idToken)
-
-      Alert.alert(
-        'Google Sign-In',
-        'To enable Google Sign-In:\n\n1. Set up Google Sign-In in Firebase Console\n2. Add your SHA-1 certificate\n3. Configure OAuth consent screen\n4. Update google-services.json',
-        [{ text: 'OK' }]
-      );
+      // Trigger Google OAuth flow
+      await promptAsync();
     } catch (error) {
+      console.error('Error triggering Google Sign-In:', error);
       Alert.alert('Google Sign-In Failed', (error as Error).message);
-    } finally {
       setGoogleLoading(false);
     }
   };
