@@ -11,6 +11,8 @@ import LessonsScreen from '../screens/LessonsScreen';
 import FlashcardScreen from '../screens/FlashcardScreen';
 import QuizScreen from '../screens/QuizScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import PeerLearningScreen from '../screens/PeerLearningScreen';
+import PeerSessionScreen from '../screens/PeerSessionScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -39,6 +41,13 @@ const MainTabs = () => {
         }}
       />
       <Tab.Screen
+        name="PeerLearning"
+        component={PeerLearningScreen}
+        options={{
+          tabBarLabel: 'Learn Together',
+        }}
+      />
+      <Tab.Screen
         name="Profile"
         component={ProfileScreen}
         options={{
@@ -58,14 +67,45 @@ const AppNavigator = () => {
 
   return (
     <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Navigator
+        screenOptions={{
+          headerStyle: {
+            backgroundColor: '#4A90E2',
+          },
+          headerTintColor: '#FFFFFF',
+          headerTitleStyle: {
+            fontWeight: 'bold',
+          },
+        }}
+      >
         {!selectedLanguage ? (
-          <Stack.Screen name="LanguageSelection" component={LanguageSelectionScreen} />
+          <Stack.Screen
+            name="LanguageSelection"
+            component={LanguageSelectionScreen}
+            options={{ headerShown: false }}
+          />
         ) : (
           <>
-            <Stack.Screen name="MainTabs" component={MainTabs} />
-            <Stack.Screen name="Flashcard" component={FlashcardScreen} />
-            <Stack.Screen name="Quiz" component={QuizScreen} />
+            <Stack.Screen
+              name="MainTabs"
+              component={MainTabs}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="Flashcard"
+              component={FlashcardScreen}
+              options={{ title: 'Flashcards' }}
+            />
+            <Stack.Screen
+              name="Quiz"
+              component={QuizScreen}
+              options={{ title: 'Quiz' }}
+            />
+            <Stack.Screen
+              name="PeerSession"
+              component={PeerSessionScreen}
+              options={{ title: 'Learn Together' }}
+            />
           </>
         )}
       </Stack.Navigator>

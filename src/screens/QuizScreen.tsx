@@ -122,14 +122,6 @@ const QuizScreen = ({ route, navigation }: any) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={handleExit}>
-          <Text style={styles.closeButton}>✕</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Quiz: {lesson.title}</Text>
-        <View style={styles.placeholder} />
-      </View>
-
       <View style={styles.progressContainer}>
         <View style={styles.progressBar}>
           <View
@@ -200,27 +192,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F5F7FA',
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    paddingTop: 40,
-  },
-  closeButton: {
-    fontSize: 28,
-    color: '#7F8C8D',
-    fontWeight: '300',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#2C3E50',
-  },
-  placeholder: {
-    width: 28,
-  },
   progressContainer: {
+    marginTop: 20,
     paddingHorizontal: 20,
     marginBottom: 20,
   },

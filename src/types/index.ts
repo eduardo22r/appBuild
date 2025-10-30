@@ -41,3 +41,28 @@ export interface QuizQuestion {
   options: string[];
   type: 'translation' | 'multipleChoice';
 }
+
+export interface PeerUser {
+  id: string;
+  name: string;
+  languageId: string;
+  score: number;
+  status: 'available' | 'busy' | 'offline';
+}
+
+export interface ChatMessage {
+  id: string;
+  senderId: string;
+  senderName: string;
+  message: string;
+  timestamp: Date;
+}
+
+export interface PeerSession {
+  id: string;
+  users: PeerUser[];
+  lesson: Lesson | null;
+  currentCardIndex: number;
+  messages: ChatMessage[];
+  status: 'waiting' | 'active' | 'completed';
+}
