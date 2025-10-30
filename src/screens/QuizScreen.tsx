@@ -158,8 +158,8 @@ const QuizScreen = ({ route, navigation }: any) => {
                 key={index}
                 style={[
                   styles.optionButton,
-                  showCorrect && styles.correctOption,
-                  showIncorrect && styles.incorrectOption,
+                  showCorrect ? styles.correctOption : undefined,
+                  showIncorrect ? styles.incorrectOption : undefined,
                 ]}
                 onPress={() => handleAnswerSelect(option)}
                 disabled={!!selectedAnswer}

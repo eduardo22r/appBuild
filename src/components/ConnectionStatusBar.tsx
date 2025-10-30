@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react';
+import { View, Text, StyleSheet, Animated } from 'react-native';
 import { useApp } from '../context/AppContext';
 import { Colors, Spacing, Typography } from '../theme';
 
