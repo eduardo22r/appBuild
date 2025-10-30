@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -7,43 +7,84 @@ import {
   TouchableOpacity,
   SafeAreaView,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useApp } from '../context/AppContext';
 import { LANGUAGES } from '../data/languages';
 import { Language } from '../types';
+import { Colors, Spacing, BorderRadius, Typography, Shadows } from '../theme';
 
 const LanguageSelectionScreen = () => {
   const { setSelectedLanguage } = useApp();
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const handleSelectLanguage = (language: Language) => {
-    setSelectedLanguage(language);
+    setSelectedId(language.id);
+    setTimeout(() => {
+      setSelectedLanguage(language);
+    }, 300);
   };
 
-  const renderLanguageItem = ({ item }: { item: Language }) => (
-    <TouchableOpacity
-      style={styles.languageCard}
-      onPress={() => handleSelectLanguage(item)}
-    >
-      <Text style={styles.flag}>{item.flag}</Text>
-      <View style={styles.languageInfo}>
-        <Text style={styles.languageName}>{item.name}</Text>
-        <Text style={styles.nativeName}>{item.nativeName}</Text>
-      </View>
-      <Text style={styles.arrow}>›</Text>
-    </TouchableOpacity>
-  );
+  const renderLanguageItem = ({ item, index }: { item: Language; index: number }) => {
+    const isSelected = selectedId === item.id;
+
+    return (
+      <TouchableOpacity
+        style={[styles.languageCard, isSelected && styles.selectedCard]}
+        onPress={() => handleSelectLanguage(item)}
+        activeOpacity={0.7}
+      >
+        {isSelected && (
+          <LinearGradient
+            colors={Colors.gradients.primary}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFillObject}
+          />
+        )}
+        <View style={styles.cardContent}>
+          <View style={styles.flagContainer}>
+            <Text style={styles.flag}>{item.flag}</Text>
+          </View>
+          <View style={styles.languageInfo}>
+            <Text style={[styles.languageName, isSelected && styles.selectedText]}>
+              {item.name}
+            </Text>
+            <Text style={[styles.nativeName, isSelected && styles.selectedNativeText]}>
+              {item.nativeName}
+            </Text>
+          </View>
+          <View style={[styles.checkCircle, isSelected && styles.checkedCircle]}>
+            {isSelected && <Text style={styles.checkmark}>✓</Text>}
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Choose a Language</Text>
-        <Text style={styles.subtitle}>Select the language you want to learn</Text>
+      <LinearGradient
+        colors={Colors.gradients.primary}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.headerGradient}
+      >
+        <View style={styles.header}>
+          <Text style={styles.emoji}>🌍</Text>
+          <Text style={styles.title}>Choose Your Language</Text>
+          <Text style={styles.subtitle}>Select the language you want to master</Text>
+        </View>
+      </LinearGradient>
+
+      <View style={styles.content}>
+        <FlatList
+          data={LANGUAGES}
+          renderItem={renderLanguageItem}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
+        />
       </View>
-      <FlatList
-        data={LANGUAGES}
-        renderItem={renderLanguageItem}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.list}
-      />
     </SafeAreaView>
   );
 };
@@ -51,58 +92,106 @@ const LanguageSelectionScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: Colors.background,
+  },
+  headerGradient: {
+    borderBottomLeftRadius: BorderRadius.xl,
+    borderBottomRightRadius: BorderRadius.xl,
+    paddingTop: Spacing.xxl,
+    paddingBottom: Spacing.xl,
+    paddingHorizontal: Spacing.lg,
   },
   header: {
-    padding: 20,
-    paddingTop: 40,
+    alignItems: 'center',
+  },
+  emoji: {
+    fontSize: 64,
+    marginBottom: Spacing.md,
   },
   title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#2C3E50',
-    marginBottom: 8,
+    fontSize: Typography.sizes.xxxl,
+    fontWeight: Typography.weights.bold,
+    color: Colors.text.inverse,
+    marginBottom: Spacing.sm,
+    textAlign: 'center',
   },
   subtitle: {
-    fontSize: 16,
-    color: '#7F8C8D',
+    fontSize: Typography.sizes.base,
+    color: 'rgba(255, 255, 255, 0.9)',
+    textAlign: 'center',
+    fontWeight: Typography.weights.medium,
+  },
+  content: {
+    flex: 1,
   },
   list: {
-    padding: 20,
+    padding: Spacing.lg,
+    paddingTop: Spacing.xl,
   },
   languageCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.lg,
+    marginBottom: Spacing.md,
+    overflow: 'hidden',
+    ...Shadows.md,
+  },
+  selectedCard: {
+    transform: [{ scale: 0.98 }],
+  },
+  cardContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    padding: Spacing.lg,
+  },
+  flagContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: BorderRadius.lg,
+    backgroundColor: Colors.backgroundSecondary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: Spacing.md,
   },
   flag: {
-    fontSize: 40,
-    marginRight: 16,
+    fontSize: 32,
   },
   languageInfo: {
     flex: 1,
   },
   languageName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#2C3E50',
-    marginBottom: 4,
+    fontSize: Typography.sizes.xl,
+    fontWeight: Typography.weights.bold,
+    color: Colors.text.primary,
+    marginBottom: Spacing.xs,
   },
   nativeName: {
-    fontSize: 14,
-    color: '#7F8C8D',
+    fontSize: Typography.sizes.base,
+    color: Colors.text.secondary,
+    fontWeight: Typography.weights.medium,
   },
-  arrow: {
-    fontSize: 24,
-    color: '#BDC3C7',
+  selectedText: {
+    color: Colors.text.inverse,
+  },
+  selectedNativeText: {
+    color: 'rgba(255, 255, 255, 0.9)',
+  },
+  checkCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: BorderRadius.round,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  checkedCircle: {
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    borderColor: Colors.text.inverse,
+  },
+  checkmark: {
+    fontSize: 18,
+    color: Colors.text.inverse,
+    fontWeight: Typography.weights.bold,
   },
 });
 

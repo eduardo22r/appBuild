@@ -3,6 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useApp } from '../context/AppContext';
+import { Colors } from '../theme';
 
 // Screens
 import LanguageSelectionScreen from '../screens/LanguageSelectionScreen';
@@ -21,8 +22,24 @@ const MainTabs = () => {
   return (
     <Tab.Navigator
       screenOptions={{
-        tabBarActiveTintColor: '#4A90E2',
-        tabBarInactiveTintColor: '#999',
+        tabBarActiveTintColor: Colors.primary,
+        tabBarInactiveTintColor: Colors.text.tertiary,
+        tabBarStyle: {
+          backgroundColor: Colors.surface,
+          borderTopWidth: 0,
+          elevation: 8,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 8,
+          paddingBottom: 8,
+          paddingTop: 8,
+          height: 60,
+        },
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: '600',
+        },
         headerShown: false,
       }}
     >
@@ -70,12 +87,16 @@ const AppNavigator = () => {
       <Stack.Navigator
         screenOptions={{
           headerStyle: {
-            backgroundColor: '#4A90E2',
+            backgroundColor: Colors.primary,
+            elevation: 0,
+            shadowOpacity: 0,
           },
-          headerTintColor: '#FFFFFF',
+          headerTintColor: Colors.text.inverse,
           headerTitleStyle: {
-            fontWeight: 'bold',
+            fontWeight: '700',
+            fontSize: 18,
           },
+          headerBackTitleVisible: false,
         }}
       >
         {!selectedLanguage ? (
