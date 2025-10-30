@@ -1,4 +1,4 @@
-import { initializeApp, getApps, getApp } from 'firebase/app';
+import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import {
   getAuth,
   signInWithEmailAndPassword,
@@ -12,19 +12,37 @@ import {
   sendPasswordResetEmail,
   updateProfile,
   AuthError,
+  Auth,
 } from 'firebase/auth';
 import { firebaseConfig, authConfig } from '../config/firebase';
 import { storage } from '../utils/storage';
 
-// Initialize Firebase
-let app;
-if (getApps().length === 0) {
-  app = initializeApp(firebaseConfig);
-} else {
-  app = getApp();
-}
+// Check if Firebase is properly configured
+const isFirebaseConfigured = () => {
+  return firebaseConfig.apiKey &&
+         !firebaseConfig.apiKey.includes('your-api-key') &&
+         !firebaseConfig.apiKey.includes('process.env');
+};
 
-const auth = getAuth(app);
+// Initialize Firebase only if properly configured
+let app: FirebaseApp | null = null;
+let auth: Auth | null = null;
+
+if (isFirebaseConfigured()) {
+  try {
+    if (getApps().length === 0) {
+      app = initializeApp(firebaseConfig);
+    } else {
+      app = getApp();
+    }
+    auth = getAuth(app);
+    console.log('✓ Firebase initialized successfully');
+  } catch (error) {
+    console.warn('Firebase initialization failed:', error);
+  }
+} else {
+  console.log('⚠ Firebase not configured - running in demo mode');
+}
 
 export interface AuthUser {
   uid: string;
@@ -42,17 +60,37 @@ class AuthService {
   private currentUser: AuthUser | null = null;
 
   constructor() {
-    // Set up auth state listener
-    onAuthStateChanged(auth, (firebaseUser) => {
-      if (firebaseUser) {
-        this.currentUser = this.mapFirebaseUser(firebaseUser);
-        this.saveUserSession(this.currentUser);
-      } else {
-        this.currentUser = null;
-        this.clearUserSession();
+    // Set up auth state listener only if Firebase is configured
+    if (auth) {
+      onAuthStateChanged(auth, (firebaseUser) => {
+        if (firebaseUser) {
+          this.currentUser = this.mapFirebaseUser(firebaseUser);
+          this.saveUserSession(this.currentUser);
+        } else {
+          this.currentUser = null;
+          this.clearUserSession();
+        }
+        this.notifyListeners(this.currentUser);
+      });
+    } else {
+      // Demo mode - try to load saved session
+      this.loadSavedSession();
+    }
+  }
+
+  /**
+   * Load saved session (for demo mode)
+   */
+  private async loadSavedSession() {
+    try {
+      const savedSession = await storage.getItem('userSession');
+      if (savedSession) {
+        this.currentUser = JSON.parse(savedSession);
+        this.notifyListeners(this.currentUser);
       }
-      this.notifyListeners(this.currentUser);
-    });
+    } catch (error) {
+      console.error('Error loading saved session:', error);
+    }
   }
 
   /**
@@ -74,6 +112,24 @@ class AuthService {
    * Sign up with email and password
    */
   async signUpWithEmail(email: string, password: string, displayName: string): Promise<AuthUser> {
+    // Demo mode - create mock user
+    if (!auth || authConfig.demoMode) {
+      const demoUser: AuthUser = {
+        uid: `demo-${Date.now()}`,
+        email: email,
+        displayName: displayName,
+        photoURL: null,
+        emailVerified: true,
+        provider: 'email',
+      };
+      this.currentUser = demoUser;
+      await this.saveUserSession(demoUser);
+      this.notifyListeners(demoUser);
+      console.log('✓ Demo mode: User created locally');
+      return demoUser;
+    }
+
+    // Real Firebase authentication
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
 
@@ -92,6 +148,37 @@ class AuthService {
    * Sign in with email and password
    */
   async signInWithEmail(email: string, password: string): Promise<AuthUser> {
+    // Demo mode - check for existing user or create one
+    if (!auth || authConfig.demoMode) {
+      // Try to load existing session
+      const savedSession = await storage.getItem('userSession');
+      if (savedSession) {
+        const user = JSON.parse(savedSession);
+        if (user.email === email) {
+          this.currentUser = user;
+          this.notifyListeners(user);
+          console.log('✓ Demo mode: User signed in from saved session');
+          return user;
+        }
+      }
+
+      // Create new demo user if no matching session
+      const demoUser: AuthUser = {
+        uid: `demo-${Date.now()}`,
+        email: email,
+        displayName: email.split('@')[0],
+        photoURL: null,
+        emailVerified: true,
+        provider: 'email',
+      };
+      this.currentUser = demoUser;
+      await this.saveUserSession(demoUser);
+      this.notifyListeners(demoUser);
+      console.log('✓ Demo mode: User signed in locally');
+      return demoUser;
+    }
+
+    // Real Firebase authentication
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       return this.mapFirebaseUser(userCredential.user);
@@ -104,6 +191,24 @@ class AuthService {
    * Sign in with Google
    */
   async signInWithGoogle(idToken: string): Promise<AuthUser> {
+    // Demo mode - create mock Google user
+    if (!auth || authConfig.demoMode) {
+      const demoUser: AuthUser = {
+        uid: `demo-google-${Date.now()}`,
+        email: 'demo.user@gmail.com',
+        displayName: 'Demo Google User',
+        photoURL: null,
+        emailVerified: true,
+        provider: 'google.com',
+      };
+      this.currentUser = demoUser;
+      await this.saveUserSession(demoUser);
+      this.notifyListeners(demoUser);
+      console.log('✓ Demo mode: Google user signed in locally');
+      return demoUser;
+    }
+
+    // Real Firebase authentication
     try {
       const credential = GoogleAuthProvider.credential(idToken);
       const userCredential = await signInWithCredential(auth, credential);
@@ -117,6 +222,24 @@ class AuthService {
    * Sign in with Apple
    */
   async signInWithApple(idToken: string, nonce: string): Promise<AuthUser> {
+    // Demo mode - create mock Apple user
+    if (!auth || authConfig.demoMode) {
+      const demoUser: AuthUser = {
+        uid: `demo-apple-${Date.now()}`,
+        email: 'demo.user@icloud.com',
+        displayName: 'Demo Apple User',
+        photoURL: null,
+        emailVerified: true,
+        provider: 'apple.com',
+      };
+      this.currentUser = demoUser;
+      await this.saveUserSession(demoUser);
+      this.notifyListeners(demoUser);
+      console.log('✓ Demo mode: Apple user signed in locally');
+      return demoUser;
+    }
+
+    // Real Firebase authentication
     try {
       const provider = new OAuthProvider('apple.com');
       const credential = provider.credential({
@@ -135,11 +258,21 @@ class AuthService {
    */
   async signOut(): Promise<void> {
     try {
-      await signOut(auth);
+      if (auth) {
+        await signOut(auth);
+      }
       this.currentUser = null;
       await this.clearUserSession();
+      this.notifyListeners(null);
+      console.log('✓ User signed out');
     } catch (error) {
-      throw this.handleAuthError(error as AuthError);
+      if (auth) {
+        throw this.handleAuthError(error as AuthError);
+      }
+      // In demo mode, just clear the session
+      this.currentUser = null;
+      await this.clearUserSession();
+      this.notifyListeners(null);
     }
   }
 
@@ -147,6 +280,13 @@ class AuthService {
    * Send password reset email
    */
   async resetPassword(email: string): Promise<void> {
+    // Demo mode - simulate password reset
+    if (!auth || authConfig.demoMode) {
+      console.log('✓ Demo mode: Password reset email simulated for', email);
+      return;
+    }
+
+    // Real Firebase authentication
     try {
       await sendPasswordResetEmail(auth, email);
     } catch (error) {

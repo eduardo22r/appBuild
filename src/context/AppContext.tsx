@@ -204,6 +204,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     // Refresh app state after login
     const currentUser = AuthService.getCurrentUser();
     if (currentUser) {
+      // Real authenticated user
       setAuthUser(currentUser);
       setIsAuthenticated(true);
       setUserNameState(currentUser.displayName || currentUser.email || 'Learner');
@@ -215,6 +216,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       if (userProgress.length > 0 && isOnline) {
         CloudSyncService.syncProgress(userProgress);
       }
+    } else {
+      // Demo mode / guest user - allow access without authentication
+      setIsAuthenticated(true);
+      setAuthUser(null);
+      console.log('Demo mode: Proceeding without authentication');
     }
   };
 
