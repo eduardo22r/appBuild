@@ -2,7 +2,7 @@
 
 export const geminiConfig = {
   apiKey: "AIzaSyB3DChiKfl4Pi_kkcta0eSGh3dvOXMG7f8",
-  model: "gemini-1.5-flash", // Fast and efficient for real-time interactions
+  model: "gemini-pro", // Stable and reliable model for all interactions
 
   // Generation settings
   generationConfig: {
