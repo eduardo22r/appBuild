@@ -38,6 +38,9 @@ class GeminiService {
   private userLevel: string = 'beginner';
 
   constructor() {
+    console.log('🚀 Initializing Gemini AI Service...');
+    console.log('API Key configured:', geminiConfig.apiKey ? 'Yes' : 'No');
+    console.log('Model:', geminiConfig.model);
     this.genAI = new GoogleGenerativeAI(geminiConfig.apiKey);
   }
 
@@ -77,9 +80,14 @@ class GeminiService {
    */
   async chat(userMessage: string): Promise<string> {
     try {
+      console.log('🤖 AI Chat - Starting request...');
+      console.log('User message:', userMessage);
+      console.log('Language:', this.currentLanguage);
+      console.log('Level:', this.userLevel);
+
       const model = this.genAI.getGenerativeModel({
         model: geminiConfig.model,
-        generationConfig: geminiConfig.generationConfig as any,
+        generationConfig: geminiConfig.generationConfig,
         safetySettings: geminiConfig.safetySettings as any,
       });
 
@@ -96,18 +104,43 @@ Respond naturally in ${this.currentLanguage}, keeping the conversation flowing. 
 
 Your response:`;
 
+      console.log('📤 Sending request to Gemini API...');
+      console.log('Using model:', geminiConfig.model);
+
       const result = await model.generateContent(prompt);
+
+      console.log('📥 Received response from Gemini API');
+
       const response = result.response;
       const text = response.text();
+
+      console.log('✅ AI Response:', text);
 
       // Add to conversation history
       this.addToHistory('user', userMessage);
       this.addToHistory('assistant', text);
 
       return text;
-    } catch (error) {
-      console.error('Error in chat:', error);
-      throw new Error('Failed to get AI response. Please try again.');
+    } catch (error: any) {
+      console.error('❌ Error in chat:', error);
+      console.error('Error name:', error.name);
+      console.error('Error message:', error.message);
+      console.error('Error details:', JSON.stringify(error, null, 2));
+
+      // More detailed error message
+      if (error.message?.includes('API_KEY_INVALID') || error.message?.includes('API key')) {
+        throw new Error('Invalid API key. Please check your Gemini API configuration.');
+      } else if (error.message?.includes('quota') || error.message?.includes('RESOURCE_EXHAUSTED')) {
+        throw new Error('API quota exceeded. Please try again later.');
+      } else if (error.message?.includes('model not found') || error.message?.includes('NOT_FOUND')) {
+        throw new Error('Model not found. The Gemini model may not be available.');
+      } else if (error.message?.includes('network') || error.message?.includes('fetch') || error.message?.includes('Failed to fetch')) {
+        throw new Error('Network error. Please check your internet connection.');
+      } else if (error.message?.includes('blocked') || error.message?.includes('SAFETY')) {
+        throw new Error('Response was blocked by safety filters. Please try rephrasing.');
+      } else {
+        throw new Error(`AI Error: ${error.message || 'Failed to get response. Please try again.'}`);
+      }
     }
   }
 
@@ -116,7 +149,12 @@ Your response:`;
    */
   async correctGrammar(text: string): Promise<GrammarCorrectionResult> {
     try {
-      const model = this.genAI.getGenerativeModel({ model: geminiConfig.model });
+      console.log('📝 Grammar Check - Starting...');
+      const model = this.genAI.getGenerativeModel({
+        model: geminiConfig.model,
+        generationConfig: geminiConfig.generationConfig,
+        safetySettings: geminiConfig.safetySettings as any,
+      });
 
       const prompt = `You are a ${this.currentLanguage} grammar expert. Analyze this text and provide corrections.
 
@@ -135,6 +173,8 @@ Be specific and educational. If there are no mistakes, say so.`;
       const result = await model.generateContent(prompt);
       const response = result.response.text();
 
+      console.log('✅ Grammar response received');
+
       // Parse JSON response
       const jsonMatch = response.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
@@ -149,9 +189,9 @@ Be specific and educational. If there are no mistakes, say so.`;
         explanation: response,
         mistakes: [],
       };
-    } catch (error) {
-      console.error('Error in grammar correction:', error);
-      throw new Error('Failed to correct grammar. Please try again.');
+    } catch (error: any) {
+      console.error('❌ Error in grammar correction:', error);
+      throw new Error(`Grammar check failed: ${error.message || 'Please try again.'}`);
     }
   }
 
@@ -164,7 +204,12 @@ Be specific and educational. If there are no mistakes, say so.`;
     toLanguage: string = this.currentLanguage
   ): Promise<TranslationResult> {
     try {
-      const model = this.genAI.getGenerativeModel({ model: geminiConfig.model });
+      console.log('🌐 Translation - Starting...');
+      const model = this.genAI.getGenerativeModel({
+        model: geminiConfig.model,
+        generationConfig: geminiConfig.generationConfig,
+        safetySettings: geminiConfig.safetySettings as any,
+      });
 
       const prompt = `Translate this text from ${fromLanguage} to ${toLanguage}. Provide context and pronunciation if helpful.
 
@@ -181,6 +226,8 @@ Provide response in this JSON format:
       const result = await model.generateContent(prompt);
       const response = result.response.text();
 
+      console.log('✅ Translation received');
+
       // Parse JSON response
       const jsonMatch = response.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
@@ -195,9 +242,9 @@ Provide response in this JSON format:
         pronunciation: '',
         context: '',
       };
-    } catch (error) {
-      console.error('Error in translation:', error);
-      throw new Error('Failed to translate. Please try again.');
+    } catch (error: any) {
+      console.error('❌ Error in translation:', error);
+      throw new Error(`Translation failed: ${error.message || 'Please try again.'}`);
     }
   }
 
@@ -206,23 +253,30 @@ Provide response in this JSON format:
    */
   async getCulturalInsight(topic?: string): Promise<CulturalInsight> {
     try {
-      const model = this.genAI.getGenerativeModel({ model: geminiConfig.model });
+      console.log('🎭 Cultural Insight - Starting...');
+      const model = this.genAI.getGenerativeModel({
+        model: geminiConfig.model,
+        generationConfig: geminiConfig.generationConfig,
+        safetySettings: geminiConfig.safetySettings as any,
+      });
 
       const prompt = topic
-        ? `Share an interesting cultural insight about ${this.currentLanguage} culture related to: ${topic}. Include practical examples.`
-        : `Share an interesting cultural insight about ${this.currentLanguage} culture. Include practical examples that would help a language learner.`;
+        ? `Share an interesting cultural insight about ${this.currentLanguage} culture related to: ${topic}. Include practical examples that would help a language learner. Keep it concise (2-3 paragraphs).`
+        : `Share an interesting cultural insight about ${this.currentLanguage} culture. Include practical examples that would help a language learner. Keep it concise (2-3 paragraphs).`;
 
       const result = await model.generateContent(prompt);
       const response = result.response.text();
+
+      console.log('✅ Cultural insight received');
 
       return {
         topic: topic || 'General Culture',
         insight: response,
         examples: [], // Could parse examples from response if needed
       };
-    } catch (error) {
-      console.error('Error getting cultural insight:', error);
-      throw new Error('Failed to get cultural insight. Please try again.');
+    } catch (error: any) {
+      console.error('❌ Error getting cultural insight:', error);
+      throw new Error(`Cultural insight failed: ${error.message || 'Please try again.'}`);
     }
   }
 
@@ -231,7 +285,11 @@ Provide response in this JSON format:
    */
   async generateQuiz(topic: string, questionCount: number = 5): Promise<any[]> {
     try {
-      const model = this.genAI.getGenerativeModel({ model: geminiConfig.model });
+      const model = this.genAI.getGenerativeModel({
+        model: geminiConfig.model,
+        generationConfig: geminiConfig.generationConfig,
+        safetySettings: geminiConfig.safetySettings as any,
+      });
 
       const prompt = `Create ${questionCount} multiple choice quiz questions about ${topic} in ${this.currentLanguage} for a ${this.userLevel} level learner.
 
@@ -267,7 +325,11 @@ Return as a JSON array of questions.`;
    */
   async getPronunciationTips(word: string): Promise<string> {
     try {
-      const model = this.genAI.getGenerativeModel({ model: geminiConfig.model });
+      const model = this.genAI.getGenerativeModel({
+        model: geminiConfig.model,
+        generationConfig: geminiConfig.generationConfig,
+        safetySettings: geminiConfig.safetySettings as any,
+      });
 
       const prompt = `Provide pronunciation tips for the ${this.currentLanguage} word: "${word}"
 
@@ -293,7 +355,11 @@ Include:
     timeAvailable: number = 15
   ): Promise<string> {
     try {
-      const model = this.genAI.getGenerativeModel({ model: geminiConfig.model });
+      const model = this.genAI.getGenerativeModel({
+        model: geminiConfig.model,
+        generationConfig: geminiConfig.generationConfig,
+        safetySettings: geminiConfig.safetySettings as any,
+      });
 
       const prompt = `Create a personalized ${timeAvailable}-minute ${this.currentLanguage} lesson for a ${this.userLevel} level learner.
 
@@ -321,7 +387,11 @@ Keep it engaging and practical.`;
    */
   async explainGrammar(concept: string): Promise<string> {
     try {
-      const model = this.genAI.getGenerativeModel({ model: geminiConfig.model });
+      const model = this.genAI.getGenerativeModel({
+        model: geminiConfig.model,
+        generationConfig: geminiConfig.generationConfig,
+        safetySettings: geminiConfig.safetySettings as any,
+      });
 
       const prompt = `Explain the ${this.currentLanguage} grammar concept: "${concept}" for a ${this.userLevel} level learner.
 
@@ -347,7 +417,11 @@ Keep it clear and concise.`;
    */
   async getConversationStarters(topic: string): Promise<string[]> {
     try {
-      const model = this.genAI.getGenerativeModel({ model: geminiConfig.model });
+      const model = this.genAI.getGenerativeModel({
+        model: geminiConfig.model,
+        generationConfig: geminiConfig.generationConfig,
+        safetySettings: geminiConfig.safetySettings as any,
+      });
 
       const prompt = `Generate 5 conversation starters in ${this.currentLanguage} about: ${topic}
 

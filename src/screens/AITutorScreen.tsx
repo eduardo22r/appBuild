@@ -112,9 +112,32 @@ const AITutorScreen = () => {
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error getting AI response:', error);
-      Alert.alert('Error', 'Failed to get AI response. Please try again.');
+
+      // Show detailed error message
+      const errorMessage = error.message || 'Failed to get AI response. Please try again.';
+
+      // Add error message to chat for better UX
+      const errorBubble: Message = {
+        id: (Date.now() + 2).toString(),
+        role: 'assistant',
+        content: `⚠️ Error: ${errorMessage}\n\nPlease check:\n• Internet connection\n• API key validity\n• Console logs for details`,
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, errorBubble]);
+
+      Alert.alert(
+        'AI Error',
+        errorMessage,
+        [
+          { text: 'OK', style: 'default' },
+          {
+            text: 'View Logs',
+            onPress: () => console.log('Check the React Native debugger for detailed error logs')
+          }
+        ]
+      );
     } finally {
       setIsLoading(false);
       // Scroll to bottom after message is added
