@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useApp } from '../context/AppContext';
 import { LESSONS } from '../data/lessons';
 import { Colors, Spacing, BorderRadius, Typography, Shadows } from '../theme';
+import LanguageSwitcher from '../components/LanguageSwitcher';
+import GeminiService from '../services/GeminiService';
 
 const getTimeAgo = (date: Date): string => {
   const seconds = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
@@ -25,7 +27,8 @@ const getTimeAgo = (date: Date): string => {
 };
 
 const HomeScreen = ({ navigation }: any) => {
-  const { selectedLanguage, userProgress, userName, isOnline, isSyncing, lastSyncTime, syncNow } = useApp();
+  const { selectedLanguage, setSelectedLanguage, userProgress, userName, isOnline, isSyncing, lastSyncTime, syncNow } = useApp();
+  const [showLanguageSwitcher, setShowLanguageSwitcher] = useState(false);
 
   const currentProgress = userProgress.find(
     (p) => p.languageId === selectedLanguage?.id
@@ -40,6 +43,12 @@ const HomeScreen = ({ navigation }: any) => {
   const masteredWords = currentProgress?.masteredWords.length || 0;
   const totalScore = currentProgress?.score || 0;
   const streak = currentProgress?.streak || 0;
+
+  const handleLanguageChange = (language: any) => {
+    setSelectedLanguage(language);
+    // Update AI tutor language
+    GeminiService.setLanguage(language.name);
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -65,15 +74,27 @@ const HomeScreen = ({ navigation }: any) => {
             </View>
           </View>
 
-          <View style={styles.languageCard}>
-            <Text style={styles.cardTitle}>Learning {selectedLanguage?.name}</Text>
-            <Text style={styles.nativeName}>{selectedLanguage?.nativeName}</Text>
+          <TouchableOpacity
+            style={styles.languageCard}
+            onPress={() => setShowLanguageSwitcher(true)}
+            activeOpacity={0.8}
+          >
+            <View style={styles.languageCardContent}>
+              <View style={styles.languageInfo}>
+                <Text style={styles.cardTitle}>Learning {selectedLanguage?.name}</Text>
+                <Text style={styles.nativeName}>{selectedLanguage?.nativeName}</Text>
+              </View>
+              <View style={styles.switchButton}>
+                <Text style={styles.switchButtonText}>Switch</Text>
+                <Text style={styles.switchButtonIcon}>↔</Text>
+              </View>
+            </View>
             {streak > 0 && (
               <View style={styles.streakBadge}>
                 <Text style={styles.streakText}>🔥 {streak} day streak</Text>
               </View>
             )}
-          </View>
+          </TouchableOpacity>
 
           {/* Sync Status */}
           <TouchableOpacity
@@ -267,6 +288,14 @@ const HomeScreen = ({ navigation }: any) => {
           </Text>
         </View>
       </ScrollView>
+
+      {/* Language Switcher Modal */}
+      <LanguageSwitcher
+        visible={showLanguageSwitcher}
+        onClose={() => setShowLanguageSwitcher(false)}
+        currentLanguage={selectedLanguage}
+        onSelectLanguage={handleLanguageChange}
+      />
     </SafeAreaView>
   );
 };
@@ -336,6 +365,15 @@ const styles = StyleSheet.create({
     padding: Spacing.lg,
     backdropFilter: 'blur(10px)',
   },
+  languageCardContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.sm,
+  },
+  languageInfo: {
+    flex: 1,
+  },
   cardTitle: {
     fontSize: Typography.sizes.xl,
     fontWeight: Typography.weights.bold,
@@ -346,6 +384,24 @@ const styles = StyleSheet.create({
     fontSize: Typography.sizes.lg,
     color: 'rgba(255, 255, 255, 0.9)',
     fontWeight: Typography.weights.medium,
+  },
+  switchButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.round,
+  },
+  switchButtonText: {
+    fontSize: Typography.sizes.sm,
+    fontWeight: Typography.weights.bold,
+    color: Colors.text.inverse,
+    marginRight: Spacing.xs,
+  },
+  switchButtonIcon: {
+    fontSize: 16,
+    color: Colors.text.inverse,
   },
   streakBadge: {
     backgroundColor: 'rgba(255, 255, 255, 0.3)',
