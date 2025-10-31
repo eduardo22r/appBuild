@@ -9,11 +9,14 @@ import {
   TextInput,
   Alert,
   Animated,
+  ToastAndroid,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useApp } from '../context/AppContext';
 import { Lesson, Vocabulary } from '../types';
 import { Colors, Spacing, BorderRadius, Typography, Shadows } from '../theme';
+import FlashcardService from '../services/FlashcardService';
 
 const { width } = Dimensions.get('window');
 
@@ -21,7 +24,7 @@ type PracticeMode = 'flip' | 'type';
 
 const FlashcardScreen = ({ route, navigation }: any) => {
   const { lesson } = route.params as { lesson: Lesson };
-  const { updateProgress, selectedLanguage } = useApp();
+  const { updateProgress, selectedLanguage, authUser } = useApp();
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showTranslation, setShowTranslation] = useState(false);
@@ -30,9 +33,11 @@ const FlashcardScreen = ({ route, navigation }: any) => {
   const [isAnswerCorrect, setIsAnswerCorrect] = useState<boolean | null>(null);
   const [showAnswer, setShowAnswer] = useState(false);
   const [fadeAnim] = useState(new Animated.Value(1));
+  const [savedCards, setSavedCards] = useState<Set<string>>(new Set());
 
   const currentWord = lesson.vocabulary[currentIndex];
   const isLastCard = currentIndex === lesson.vocabulary.length - 1;
+  const isCardSaved = savedCards.has(currentWord.word);
 
   useEffect(() => {
     // Reset answer state when card changes
@@ -106,6 +111,39 @@ const FlashcardScreen = ({ route, navigation }: any) => {
     }
   };
 
+  const handleSaveFlashcard = async () => {
+    if (!authUser || !selectedLanguage) {
+      Alert.alert('Login Required', 'Please log in to save flashcards');
+      return;
+    }
+
+    if (isCardSaved) {
+      Alert.alert('Already Saved', 'This card is already in your collection!');
+      return;
+    }
+
+    const result = await FlashcardService.createFlashcard(
+      currentWord.word,
+      currentWord.translation,
+      selectedLanguage.id,
+      authUser.uid,
+      currentWord.pronunciation
+    );
+
+    if (result.success) {
+      setSavedCards(prev => new Set(prev).add(currentWord.word));
+
+      // Show platform-specific feedback
+      if (Platform.OS === 'android') {
+        ToastAndroid.show('✅ Saved to My Flashcards!', ToastAndroid.SHORT);
+      } else {
+        Alert.alert('Success!', 'Card saved to My Flashcards');
+      }
+    } else {
+      Alert.alert('Error', result.message);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header with mode switcher */}
@@ -120,6 +158,15 @@ const FlashcardScreen = ({ route, navigation }: any) => {
             <Text style={styles.backButtonText}>← Back</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>{lesson.title}</Text>
+          <TouchableOpacity
+            onPress={handleSaveFlashcard}
+            style={styles.saveButton}
+            disabled={isCardSaved}
+          >
+            <Text style={[styles.saveButtonText, isCardSaved && styles.saveButtonTextSaved]}>
+              {isCardSaved ? '✓' : '💾'}
+            </Text>
+          </TouchableOpacity>
         </View>
 
         {/* Mode Switcher */}
@@ -337,6 +384,21 @@ const styles = StyleSheet.create({
     color: Colors.text.inverse,
     fontSize: Typography.sizes.xl,
     fontWeight: Typography.weights.bold,
+  },
+  saveButton: {
+    width: 44,
+    height: 44,
+    borderRadius: BorderRadius.round,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: Spacing.sm,
+  },
+  saveButtonText: {
+    fontSize: 22,
+  },
+  saveButtonTextSaved: {
+    opacity: 0.6,
   },
   modeSwitcher: {
     flexDirection: 'row',

@@ -24,6 +24,8 @@ const UserFlashcardsScreen = ({ navigation }: any) => {
   const [showImportModal, setShowImportModal] = useState(false);
   const [importCode, setImportCode] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedCards, setSelectedCards] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     loadFlashcards();
@@ -110,34 +112,117 @@ const UserFlashcardsScreen = ({ navigation }: any) => {
     );
   };
 
-  const renderFlashcard = (card: UserFlashcard) => (
-    <View key={card.id} style={styles.flashcardItem}>
-      <View style={styles.flashcardContent}>
-        <Text style={styles.flashcardWord}>{card.word}</Text>
-        <Text style={styles.flashcardTranslation}>{card.translation}</Text>
-        {card.pronunciation && (
-          <Text style={styles.flashcardPronunciation}>
-            {card.pronunciation}
-          </Text>
-        )}
-      </View>
+  const toggleSelection = (cardId: string) => {
+    const newSelection = new Set(selectedCards);
+    if (newSelection.has(cardId)) {
+      newSelection.delete(cardId);
+    } else {
+      newSelection.add(cardId);
+    }
+    setSelectedCards(newSelection);
+  };
 
-      <View style={styles.flashcardActions}>
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => handleShare(card)}
-        >
-          <Text style={styles.actionButtonText}>📤</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.actionButton, styles.deleteButton]}
-          onPress={() => handleDelete(card)}
-        >
-          <Text style={styles.actionButtonText}>🗑️</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
+  const handleBatchShare = async () => {
+    if (selectedCards.size === 0) {
+      Alert.alert('No Cards Selected', 'Please select cards to share');
+      return;
+    }
+
+    Alert.prompt(
+      'Share Flashcard Set',
+      'Give your flashcard set a name:',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Share',
+          onPress: async (setName) => {
+            const name = setName || `${selectedLanguage?.name} Cards`;
+            const result = await FlashcardService.shareFlashcardSet(
+              Array.from(selectedCards),
+              name
+            );
+
+            if (result.success && result.code) {
+              try {
+                await Share.share({
+                  message: `📚 I want to share ${selectedCards.size} flashcards with you!\n\nSet: ${name}\nCode: ${result.code}\n\nImport in the Language Learning App!`,
+                  title: 'Share Flashcard Set',
+                });
+                setSelectionMode(false);
+                setSelectedCards(new Set());
+              } catch (error) {
+                Alert.alert('Share Code', `Share this code:\n\n${result.code}`);
+              }
+            } else {
+              Alert.alert('Error', result.message);
+            }
+          },
+        },
+      ],
+      'plain-text'
+    );
+  };
+
+  const cancelSelection = () => {
+    setSelectionMode(false);
+    setSelectedCards(new Set());
+  };
+
+  const renderFlashcard = (card: UserFlashcard) => {
+    const isSelected = selectedCards.has(card.id);
+
+    return (
+      <TouchableOpacity
+        key={card.id}
+        style={[
+          styles.flashcardItem,
+          selectionMode && styles.flashcardItemSelectable,
+          isSelected && styles.flashcardItemSelected,
+        ]}
+        onPress={() => selectionMode && toggleSelection(card.id)}
+        onLongPress={() => {
+          setSelectionMode(true);
+          toggleSelection(card.id);
+        }}
+        activeOpacity={selectionMode ? 0.7 : 1}
+      >
+        {selectionMode && (
+          <View style={styles.selectionCheckbox}>
+            <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
+              {isSelected && <Text style={styles.checkmark}>✓</Text>}
+            </View>
+          </View>
+        )}
+
+        <View style={styles.flashcardContent}>
+          <Text style={styles.flashcardWord}>{card.word}</Text>
+          <Text style={styles.flashcardTranslation}>{card.translation}</Text>
+          {card.pronunciation && (
+            <Text style={styles.flashcardPronunciation}>
+              {card.pronunciation}
+            </Text>
+          )}
+        </View>
+
+        {!selectionMode && (
+          <View style={styles.flashcardActions}>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => handleShare(card)}
+            >
+              <Text style={styles.actionButtonText}>📤</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.deleteButton]}
+              onPress={() => handleDelete(card)}
+            >
+              <Text style={styles.actionButtonText}>🗑️</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -159,28 +244,69 @@ const UserFlashcardsScreen = ({ navigation }: any) => {
       </LinearGradient>
 
       {/* Action Buttons */}
-      <View style={styles.actionBar}>
-        <TouchableOpacity
-          style={styles.primaryButton}
-          onPress={() => setShowCreateModal(true)}
-        >
-          <LinearGradient
-            colors={Colors.gradients.primary}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.primaryButtonGradient}
+      {selectionMode ? (
+        <View style={styles.selectionBar}>
+          <Text style={styles.selectionCount}>
+            {selectedCards.size} selected
+          </Text>
+          <View style={styles.selectionActions}>
+            <TouchableOpacity
+              style={styles.selectionButton}
+              onPress={cancelSelection}
+            >
+              <Text style={styles.selectionButtonText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.selectionButton, styles.shareSelectionButton]}
+              onPress={handleBatchShare}
+              disabled={selectedCards.size === 0}
+            >
+              <LinearGradient
+                colors={Colors.gradients.primary}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.shareSelectionButtonGradient}
+              >
+                <Text style={styles.shareSelectionButtonText}>
+                  📤 Share Set
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : (
+        <View style={styles.actionBar}>
+          <TouchableOpacity
+            style={styles.primaryButton}
+            onPress={() => setShowCreateModal(true)}
           >
-            <Text style={styles.primaryButtonText}>➕ Create Card</Text>
-          </LinearGradient>
-        </TouchableOpacity>
+            <LinearGradient
+              colors={Colors.gradients.primary}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.primaryButtonGradient}
+            >
+              <Text style={styles.primaryButtonText}>➕ Create Card</Text>
+            </LinearGradient>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.secondaryButton}
-          onPress={() => setShowImportModal(true)}
-        >
-          <Text style={styles.secondaryButtonText}>📥 Import</Text>
-        </TouchableOpacity>
-      </View>
+          <TouchableOpacity
+            style={styles.secondaryButton}
+            onPress={() => setShowImportModal(true)}
+          >
+            <Text style={styles.secondaryButtonText}>📥 Import</Text>
+          </TouchableOpacity>
+
+          {flashcards.length > 0 && (
+            <TouchableOpacity
+              style={styles.secondaryButton}
+              onPress={() => setSelectionMode(true)}
+            >
+              <Text style={styles.secondaryButtonText}>📤 Share Set</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
 
       {/* Flashcards List */}
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
@@ -388,6 +514,80 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     ...Shadows.sm,
+  },
+  flashcardItemSelectable: {
+    borderWidth: 2,
+    borderColor: Colors.border,
+  },
+  flashcardItemSelected: {
+    borderColor: Colors.primary,
+    backgroundColor: '#f0f4ff',
+  },
+  selectionCheckbox: {
+    marginRight: Spacing.md,
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  checkboxSelected: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  checkmark: {
+    color: Colors.text.inverse,
+    fontSize: Typography.sizes.sm,
+    fontWeight: Typography.weights.bold,
+  },
+  selectionBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: Spacing.lg,
+    backgroundColor: Colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  selectionCount: {
+    fontSize: Typography.sizes.lg,
+    fontWeight: Typography.weights.bold,
+    color: Colors.text.primary,
+  },
+  selectionActions: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+  },
+  selectionButton: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.md,
+    backgroundColor: Colors.background,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  selectionButtonText: {
+    fontSize: Typography.sizes.base,
+    fontWeight: Typography.weights.semibold,
+    color: Colors.text.secondary,
+  },
+  shareSelectionButton: {
+    borderRadius: BorderRadius.md,
+    overflow: 'hidden',
+    borderWidth: 0,
+  },
+  shareSelectionButtonGradient: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+  },
+  shareSelectionButtonText: {
+    fontSize: Typography.sizes.base,
+    fontWeight: Typography.weights.bold,
+    color: Colors.text.inverse,
   },
   flashcardContent: {
     flex: 1,
