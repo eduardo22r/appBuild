@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,11 +6,18 @@ import {
   TouchableOpacity,
   SafeAreaView,
   Dimensions,
+  TextInput,
+  Alert,
+  Animated,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useApp } from '../context/AppContext';
 import { Lesson, Vocabulary } from '../types';
+import { Colors, Spacing, BorderRadius, Typography, Shadows } from '../theme';
 
 const { width } = Dimensions.get('window');
+
+type PracticeMode = 'flip' | 'type';
 
 const FlashcardScreen = ({ route, navigation }: any) => {
   const { lesson } = route.params as { lesson: Lesson };
@@ -18,12 +25,54 @@ const FlashcardScreen = ({ route, navigation }: any) => {
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showTranslation, setShowTranslation] = useState(false);
+  const [practiceMode, setPracticeMode] = useState<PracticeMode>('flip');
+  const [userAnswer, setUserAnswer] = useState('');
+  const [isAnswerCorrect, setIsAnswerCorrect] = useState<boolean | null>(null);
+  const [showAnswer, setShowAnswer] = useState(false);
+  const [fadeAnim] = useState(new Animated.Value(1));
 
   const currentWord = lesson.vocabulary[currentIndex];
   const isLastCard = currentIndex === lesson.vocabulary.length - 1;
 
+  useEffect(() => {
+    // Reset answer state when card changes
+    setUserAnswer('');
+    setIsAnswerCorrect(null);
+    setShowAnswer(false);
+    setShowTranslation(false);
+
+    // Fade animation
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  }, [currentIndex]);
+
   const handleFlip = () => {
     setShowTranslation(!showTranslation);
+  };
+
+  const checkAnswer = () => {
+    if (!userAnswer.trim()) {
+      Alert.alert('Empty Answer', 'Please type your answer first');
+      return;
+    }
+
+    const correct = userAnswer.trim().toLowerCase() === currentWord.translation.toLowerCase();
+    setIsAnswerCorrect(correct);
+    setShowAnswer(true);
+
+    if (correct) {
+      setTimeout(() => {
+        handleNext();
+      }, 1500);
+    }
+  };
+
+  const skipTyping = () => {
+    setShowAnswer(true);
+    setIsAnswerCorrect(null);
   };
 
   const handleNext = () => {
@@ -35,29 +84,76 @@ const FlashcardScreen = ({ route, navigation }: any) => {
       }
       navigation.goBack();
     } else {
-      setCurrentIndex(currentIndex + 1);
-      setShowTranslation(false);
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }).start(() => {
+        setCurrentIndex(currentIndex + 1);
+      });
     }
   };
 
   const handlePrevious = () => {
     if (currentIndex > 0) {
-      setCurrentIndex(currentIndex - 1);
-      setShowTranslation(false);
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }).start(() => {
+        setCurrentIndex(currentIndex - 1);
+      });
     }
   };
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Header with mode switcher */}
+      <LinearGradient
+        colors={Colors.gradients.primary}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.header}
+      >
+        <View style={styles.headerContent}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <Text style={styles.backButtonText}>← Back</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>{lesson.title}</Text>
+        </View>
+
+        {/* Mode Switcher */}
+        <View style={styles.modeSwitcher}>
+          <TouchableOpacity
+            style={[styles.modeButton, practiceMode === 'flip' && styles.modeButtonActive]}
+            onPress={() => setPracticeMode('flip')}
+          >
+            <Text style={[styles.modeButtonText, practiceMode === 'flip' && styles.modeButtonTextActive]}>
+              🔄 Flip Cards
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.modeButton, practiceMode === 'type' && styles.modeButtonActive]}
+            onPress={() => setPracticeMode('type')}
+          >
+            <Text style={[styles.modeButtonText, practiceMode === 'type' && styles.modeButtonTextActive]}>
+              ⌨️ Type Answer
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </LinearGradient>
+
+      {/* Progress Bar */}
       <View style={styles.progressContainer}>
         <View style={styles.progressBar}>
-          <View
+          <LinearGradient
+            colors={Colors.gradients.primary}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
             style={[
               styles.progressFill,
               {
-                width: `${
-                  ((currentIndex + 1) / lesson.vocabulary.length) * 100
-                }%`,
+                width: `${((currentIndex + 1) / lesson.vocabulary.length) * 100}%`,
               },
             ]}
           />
@@ -67,29 +163,115 @@ const FlashcardScreen = ({ route, navigation }: any) => {
         </Text>
       </View>
 
-      <View style={styles.cardContainer}>
-        <TouchableOpacity
-          style={styles.flashcard}
-          onPress={handleFlip}
-          activeOpacity={0.9}
-        >
-          <View style={styles.cardContent}>
-            <Text style={styles.mainText}>
-              {showTranslation ? currentWord.translation : currentWord.word}
-            </Text>
-            {showTranslation && currentWord.pronunciation && (
-              <Text style={styles.pronunciation}>
-                {currentWord.pronunciation}
-              </Text>
-            )}
-            {showTranslation && currentWord.example && (
-              <Text style={styles.example}>{currentWord.example}</Text>
-            )}
-            <Text style={styles.tapHint}>Tap to flip</Text>
-          </View>
-        </TouchableOpacity>
-      </View>
+      {/* Card Container */}
+      <Animated.View style={[styles.cardContainer, { opacity: fadeAnim }]}>
+        {practiceMode === 'flip' ? (
+          // Flip Card Mode
+          <TouchableOpacity
+            style={styles.flashcard}
+            onPress={handleFlip}
+            activeOpacity={0.9}
+          >
+            <LinearGradient
+              colors={showTranslation ? ['#ffffff', '#f8f9fa'] : Colors.gradients.primary}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0, y: 1 }}
+              style={styles.cardGradient}
+            >
+              <View style={styles.cardContent}>
+                <Text style={[styles.mainText, !showTranslation && styles.mainTextWhite]}>
+                  {showTranslation ? currentWord.translation : currentWord.word}
+                </Text>
+                {showTranslation && currentWord.pronunciation && (
+                  <Text style={styles.pronunciation}>
+                    {currentWord.pronunciation}
+                  </Text>
+                )}
+                {showTranslation && currentWord.example && (
+                  <Text style={styles.example}>{currentWord.example}</Text>
+                )}
+                <Text style={[styles.tapHint, !showTranslation && styles.tapHintWhite]}>
+                  Tap to flip
+                </Text>
+              </View>
+            </LinearGradient>
+          </TouchableOpacity>
+        ) : (
+          // Type Answer Mode
+          <View style={styles.flashcard}>
+            <View style={styles.cardContent}>
+              <Text style={styles.typePrompt}>Translate this word:</Text>
+              <Text style={styles.mainText}>{currentWord.word}</Text>
+              {currentWord.pronunciation && (
+                <Text style={styles.pronunciation}>({currentWord.pronunciation})</Text>
+              )}
 
+              <View style={styles.typingArea}>
+                <TextInput
+                  style={[
+                    styles.answerInput,
+                    isAnswerCorrect === true && styles.answerInputCorrect,
+                    isAnswerCorrect === false && styles.answerInputWrong,
+                  ]}
+                  placeholder="Type your answer..."
+                  placeholderTextColor={Colors.text.tertiary}
+                  value={userAnswer}
+                  onChangeText={setUserAnswer}
+                  onSubmitEditing={checkAnswer}
+                  editable={!showAnswer}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+
+                {showAnswer && (
+                  <View style={styles.answerFeedback}>
+                    {isAnswerCorrect === true && (
+                      <View style={styles.correctFeedback}>
+                        <Text style={styles.feedbackText}>✅ Correct!</Text>
+                      </View>
+                    )}
+                    {isAnswerCorrect === false && (
+                      <View style={styles.wrongFeedback}>
+                        <Text style={styles.feedbackText}>❌ Incorrect</Text>
+                        <Text style={styles.correctAnswer}>
+                          Correct answer: {currentWord.translation}
+                        </Text>
+                      </View>
+                    )}
+                    {isAnswerCorrect === null && (
+                      <View style={styles.skippedFeedback}>
+                        <Text style={styles.correctAnswer}>
+                          Answer: {currentWord.translation}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                )}
+              </View>
+
+              {!showAnswer && (
+                <View style={styles.typeActions}>
+                  <TouchableOpacity style={styles.skipButton} onPress={skipTyping}>
+                    <Text style={styles.skipButtonText}>Skip</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.checkButton} onPress={checkAnswer}>
+                    <LinearGradient
+                      colors={Colors.gradients.primary}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.checkButtonGradient}
+                    >
+                      <Text style={styles.checkButtonText}>Check</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          </View>
+        )}
+      </Animated.View>
+
+      {/* Navigation Controls */}
       <View style={styles.controls}>
         <TouchableOpacity
           style={[styles.navButton, currentIndex === 0 && styles.disabledButton]}
@@ -102,14 +284,25 @@ const FlashcardScreen = ({ route, navigation }: any) => {
               currentIndex === 0 && styles.disabledText,
             ]}
           >
-            Previous
+            ← Previous
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
-          <Text style={styles.nextButtonText}>
-            {isLastCard ? 'Complete' : 'Next'}
-          </Text>
+        <TouchableOpacity
+          style={styles.nextButton}
+          onPress={handleNext}
+          disabled={practiceMode === 'type' && !showAnswer}
+        >
+          <LinearGradient
+            colors={Colors.gradients.primary}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.nextButtonGradient}
+          >
+            <Text style={styles.nextButtonText}>
+              {isLastCard ? '✓ Complete' : 'Next →'}
+            </Text>
+          </LinearGradient>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -119,117 +312,274 @@ const FlashcardScreen = ({ route, navigation }: any) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: Colors.background,
+  },
+  header: {
+    paddingTop: Spacing.lg,
+    paddingBottom: Spacing.xl,
+    paddingHorizontal: Spacing.lg,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: Spacing.md,
+  },
+  backButton: {
+    marginRight: Spacing.md,
+  },
+  backButtonText: {
+    color: Colors.text.inverse,
+    fontSize: Typography.sizes.base,
+    fontWeight: Typography.weights.semibold,
+  },
+  headerTitle: {
+    flex: 1,
+    color: Colors.text.inverse,
+    fontSize: Typography.sizes.xl,
+    fontWeight: Typography.weights.bold,
+  },
+  modeSwitcher: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: BorderRadius.round,
+    padding: Spacing.xs,
+  },
+  modeButton: {
+    flex: 1,
+    paddingVertical: Spacing.sm,
+    alignItems: 'center',
+    borderRadius: BorderRadius.round,
+  },
+  modeButtonActive: {
+    backgroundColor: Colors.surface,
+  },
+  modeButtonText: {
+    fontSize: Typography.sizes.sm,
+    fontWeight: Typography.weights.semibold,
+    color: 'rgba(255, 255, 255, 0.8)',
+  },
+  modeButtonTextActive: {
+    color: Colors.primary,
   },
   progressContainer: {
-    marginTop: 20,
-    paddingHorizontal: 20,
-    marginBottom: 20,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
   },
   progressBar: {
     height: 8,
-    backgroundColor: '#E8F4FF',
-    borderRadius: 4,
+    backgroundColor: Colors.border,
+    borderRadius: BorderRadius.round,
     overflow: 'hidden',
-    marginBottom: 8,
+    marginBottom: Spacing.sm,
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#4A90E2',
-    borderRadius: 4,
+    borderRadius: BorderRadius.round,
   },
   progressText: {
-    fontSize: 14,
-    color: '#7F8C8D',
+    fontSize: Typography.sizes.sm,
+    color: Colors.text.secondary,
     textAlign: 'center',
+    fontWeight: Typography.weights.medium,
   },
   cardContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: Spacing.lg,
   },
   flashcard: {
     width: width - 40,
-    height: 400,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 8,
+    minHeight: 400,
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.xl,
+    overflow: 'hidden',
+    ...Shadows.xl,
+  },
+  cardGradient: {
+    flex: 1,
+    borderRadius: BorderRadius.xl,
   },
   cardContent: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 30,
+    padding: Spacing.xl,
   },
   mainText: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    color: '#2C3E50',
+    fontSize: 42,
+    fontWeight: Typography.weights.bold,
+    color: Colors.text.primary,
     textAlign: 'center',
-    marginBottom: 16,
+    marginBottom: Spacing.md,
+  },
+  mainTextWhite: {
+    color: Colors.text.inverse,
   },
   pronunciation: {
-    fontSize: 18,
-    color: '#7F8C8D',
+    fontSize: Typography.sizes.lg,
+    color: Colors.text.secondary,
     fontStyle: 'italic',
-    marginBottom: 20,
+    marginTop: Spacing.sm,
   },
   example: {
-    fontSize: 16,
-    color: '#4A90E2',
+    fontSize: Typography.sizes.base,
+    color: Colors.primary,
     textAlign: 'center',
-    marginTop: 20,
+    marginTop: Spacing.lg,
+    paddingHorizontal: Spacing.lg,
   },
   tapHint: {
     position: 'absolute',
-    bottom: 20,
-    fontSize: 14,
-    color: '#BDC3C7',
+    bottom: Spacing.lg,
+    fontSize: Typography.sizes.sm,
+    color: Colors.text.tertiary,
+    fontWeight: Typography.weights.medium,
+  },
+  tapHintWhite: {
+    color: 'rgba(255, 255, 255, 0.7)',
+  },
+  typePrompt: {
+    fontSize: Typography.sizes.base,
+    color: Colors.text.secondary,
+    marginBottom: Spacing.md,
+    fontWeight: Typography.weights.medium,
+  },
+  typingArea: {
+    width: '100%',
+    marginTop: Spacing.xl,
+  },
+  answerInput: {
+    width: '100%',
+    backgroundColor: Colors.background,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    fontSize: Typography.sizes.lg,
+    color: Colors.text.primary,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    textAlign: 'center',
+    fontWeight: Typography.weights.semibold,
+  },
+  answerInputCorrect: {
+    borderColor: '#10b981',
+    backgroundColor: '#ecfdf5',
+  },
+  answerInputWrong: {
+    borderColor: '#ef4444',
+    backgroundColor: '#fef2f2',
+  },
+  answerFeedback: {
+    marginTop: Spacing.md,
+    alignItems: 'center',
+  },
+  correctFeedback: {
+    padding: Spacing.md,
+    backgroundColor: '#ecfdf5',
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: '#10b981',
+  },
+  wrongFeedback: {
+    padding: Spacing.md,
+    backgroundColor: '#fef2f2',
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: '#ef4444',
+    alignItems: 'center',
+  },
+  skippedFeedback: {
+    padding: Spacing.md,
+    backgroundColor: Colors.background,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  feedbackText: {
+    fontSize: Typography.sizes.lg,
+    fontWeight: Typography.weights.bold,
+    color: Colors.text.primary,
+    marginBottom: Spacing.xs,
+  },
+  correctAnswer: {
+    fontSize: Typography.sizes.base,
+    color: Colors.text.secondary,
+    fontWeight: Typography.weights.semibold,
+  },
+  typeActions: {
+    flexDirection: 'row',
+    marginTop: Spacing.xl,
+    gap: Spacing.md,
+  },
+  skipButton: {
+    flex: 1,
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  skipButtonText: {
+    fontSize: Typography.sizes.base,
+    fontWeight: Typography.weights.semibold,
+    color: Colors.text.secondary,
+  },
+  checkButton: {
+    flex: 2,
+    borderRadius: BorderRadius.md,
+    overflow: 'hidden',
+  },
+  checkButtonGradient: {
+    padding: Spacing.md,
+    alignItems: 'center',
+  },
+  checkButtonText: {
+    fontSize: Typography.sizes.base,
+    fontWeight: Typography.weights.bold,
+    color: Colors.text.inverse,
   },
   controls: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    padding: 20,
-    paddingBottom: 40,
+    padding: Spacing.lg,
+    paddingBottom: Spacing.xl,
+    gap: Spacing.md,
   },
   navButton: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginRight: 10,
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#4A90E2',
+    borderWidth: 1,
+    borderColor: Colors.border,
+    ...Shadows.sm,
   },
   disabledButton: {
-    borderColor: '#BDC3C7',
+    opacity: 0.5,
   },
   navButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#4A90E2',
+    fontSize: Typography.sizes.base,
+    fontWeight: Typography.weights.semibold,
+    color: Colors.text.primary,
   },
   disabledText: {
-    color: '#BDC3C7',
+    color: Colors.text.tertiary,
   },
   nextButton: {
     flex: 1,
-    backgroundColor: '#4A90E2',
-    borderRadius: 12,
-    padding: 16,
-    marginLeft: 10,
+    borderRadius: BorderRadius.md,
+    overflow: 'hidden',
+    ...Shadows.md,
+  },
+  nextButtonGradient: {
+    padding: Spacing.md,
     alignItems: 'center',
   },
   nextButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
+    fontSize: Typography.sizes.base,
+    fontWeight: Typography.weights.bold,
+    color: Colors.text.inverse,
   },
 });
 

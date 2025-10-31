@@ -212,6 +212,15 @@ const HomeScreen = ({ navigation }: any) => {
             </LinearGradient>
           </TouchableOpacity>
 
+          <TouchableOpacity
+            style={styles.secondaryButton}
+            onPress={() => navigation.navigate('UserFlashcards')}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.secondaryButtonIcon}>📇</Text>
+            <Text style={styles.secondaryButtonText}>My Flashcards</Text>
+          </TouchableOpacity>
+
           {completedLessonsCount > 0 && (
             <TouchableOpacity
               style={styles.secondaryButton}

@@ -17,6 +17,7 @@ import ProfileScreen from '../screens/ProfileScreen';
 import PeerLearningScreen from '../screens/PeerLearningScreen';
 import PeerSessionScreen from '../screens/PeerSessionScreen';
 import AITutorScreen from '../screens/AITutorScreen';
+import UserFlashcardsScreen from '../screens/UserFlashcardsScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -148,6 +149,11 @@ const AppNavigator = () => {
               name="Quiz"
               component={QuizScreen}
               options={{ title: 'Quiz' }}
+            />
+            <Stack.Screen
+              name="UserFlashcards"
+              component={UserFlashcardsScreen}
+              options={{ headerShown: false }}
             />
             <Stack.Screen
               name="PeerSession"
