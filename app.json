@@ -6,6 +6,10 @@
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "scheme": "languagelearningapp",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#4A90E2"
+    },
     "assetBundlePatterns": [
       "**/*"
     ],
@@ -17,6 +21,7 @@
       "package": "com.languagelearning.app"
     },
     "web": {
+      "bundler": "metro"
     }
   }
 }
