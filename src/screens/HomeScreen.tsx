@@ -172,6 +172,25 @@ const HomeScreen = ({ navigation }: any) => {
             </LinearGradient>
           </TouchableOpacity>
 
+          <TouchableOpacity
+            style={styles.aiButton}
+            onPress={() => navigation.navigate('AITutor')}
+            activeOpacity={0.8}
+          >
+            <LinearGradient
+              colors={['#8B5CF6', '#EC4899']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.aiButtonGradient}
+            >
+              <Text style={styles.aiButtonIcon}>🤖</Text>
+              <Text style={styles.aiButtonText}>AI Tutor</Text>
+              <View style={styles.aiBadge}>
+                <Text style={styles.aiBadgeText}>NEW</Text>
+              </View>
+            </LinearGradient>
+          </TouchableOpacity>
+
           {completedLessonsCount > 0 && (
             <TouchableOpacity
               style={styles.secondaryButton}
@@ -443,6 +462,42 @@ const styles = StyleSheet.create({
     fontSize: Typography.sizes.lg,
     fontWeight: Typography.weights.semibold,
     color: Colors.text.primary,
+  },
+  aiButton: {
+    marginBottom: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    overflow: 'hidden',
+    ...Shadows.lg,
+  },
+  aiButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: Spacing.lg,
+    position: 'relative',
+  },
+  aiButtonIcon: {
+    fontSize: 24,
+    marginRight: Spacing.sm,
+  },
+  aiButtonText: {
+    fontSize: Typography.sizes.lg,
+    fontWeight: Typography.weights.bold,
+    color: Colors.text.inverse,
+  },
+  aiBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: '#FCD34D',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.sm,
+  },
+  aiBadgeText: {
+    fontSize: 10,
+    fontWeight: Typography.weights.bold,
+    color: '#92400E',
   },
   progressContainer: {
     backgroundColor: Colors.surface,

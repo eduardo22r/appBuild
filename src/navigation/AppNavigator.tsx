@@ -16,6 +16,7 @@ import QuizScreen from '../screens/QuizScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import PeerLearningScreen from '../screens/PeerLearningScreen';
 import PeerSessionScreen from '../screens/PeerSessionScreen';
+import AITutorScreen from '../screens/AITutorScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -60,10 +61,17 @@ const MainTabs = () => {
         }}
       />
       <Tab.Screen
+        name="AITutor"
+        component={AITutorScreen}
+        options={{
+          tabBarLabel: 'AI Tutor',
+        }}
+      />
+      <Tab.Screen
         name="PeerLearning"
         component={PeerLearningScreen}
         options={{
-          tabBarLabel: 'Learn Together',
+          tabBarLabel: 'Peers',
         }}
       />
       <Tab.Screen
